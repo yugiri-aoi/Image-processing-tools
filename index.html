@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像加工ツール 丨 KBS情報通信ネットワーク</title>
+</head>
+
+<body>
+
+    <header>
+        <h1>画像加工ツール 丨 KBS情報通信ネットワーク</h1>
+    </header>
+
+    <main>
+        <div class="container">
+            <input type="file" id="uploadImage" accept="image/*">
+
+            <div class="resolution-buttons">
+                <label>解像度変更:</label>
+                <button onclick="changeResolution(1920, 1080)">フルHD</button>
+                <button onclick="changeResolution(1280, 720)">HD</button>
+                <button onclick="changeResolution(640, 360)">SD</button>
+            </div>
+
+            <div class="slider-container">
+                <label for="blurSlider">ぼかしの強さ:</label>
+                <input type="range" id="blurSlider" min="0" max="20" value="0">
+            </div>
+
+            <button id="downloadBtn">ダウンロード</button>
+
+            <div id="imageContainer">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>&copy; KBS Kyokko Broadcasting Station</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
+
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    header {
+        background-color: white;
+        /* 白背景 */
+        padding: 0 25px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        font-size: 13px;
+        justify-content: start;
+        display: flex;
+    }
+
+    main {
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* 中央揃え */
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+
+    .container {
+        text-align: center;
+        max-width: 100%;
+    }
+
+    #uploadImage,
+    #blurSlider {
+        margin: 10px;
+    }
+
+    #imageContainer {
+        position: relative;
+        width: 80vw;
+        /* 画面の幅の80% */
+        max-width: 800px;
+        /* 最大幅を設定 */
+        height: 50vh;
+        /* 画面の高さの60% */
+        overflow: auto;
+        /* 画像が領域を超えた場合にスクロール */
+        border: 1px solid #ccc;
+        margin: 20px auto;
+        background-color: #eaeaea;
+    }
+
+    canvas {
+        width: 100%;
+        height: auto;
+    }
+
+    footer {
+        position: absolute;
+        /*←絶対位置*/
+        bottom: 0;
+        /*下に固定*/
+        margin: 0 10px;
+        opacity: 0.5;
+        font-size: 12px;
+    }
+</style>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const uploadImage = document.getElementById('uploadImage');
+    const blurSlider = document.getElementById('blurSlider');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let baseImage = new Image();
+    let overlayImage = new Image();
+    overlayImage.src = 'overlay.png'; // 初期透過画像
+
+    // 画像選択イベント
+    uploadImage.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                baseImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // ベース画像の読み込み完了イベント
+    baseImage.onload = () => {
+        resizeCanvas(baseImage);
+        drawImages();
+    };
+
+    // スライダーでぼかしを調整
+    blurSlider.addEventListener('input', drawImages);
+
+    // 解像度変更関数（選択画像にのみ適用）
+    function changeResolution(width, height) {
+        const aspectRatio = baseImage.width / baseImage.height;
+        if (aspectRatio > 1) {
+            canvas.width = width;
+            canvas.height = width / aspectRatio;
+        } else {
+            canvas.height = height;
+            canvas.width = height * aspectRatio;
+        }
+        drawImages();
+    }
+
+    // 画像を描画する関数
+    function drawImages() {
+        // キャンバスをクリア
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // ベース画像にぼかし効果を適用して描画
+        ctx.filter = `blur(${blurSlider.value}px)`;
+        ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+
+        // フィルターを解除し、透過画像を右下に配置
+        ctx.filter = 'none';
+        const overlayX = canvas.width - overlayImage.width; // 右端に配置
+        const overlayY = canvas.height - overlayImage.height; // 下端に配置
+        ctx.drawImage(overlayImage, overlayX, overlayY);
+    }
+
+    // キャンバスのサイズを画像サイズに合わせて調整する関数
+    function resizeCanvas(image) {
+        const aspectRatio = image.width / image.height;
+        if (aspectRatio > 1) {
+            canvas.width = 1920;
+            canvas.height = 1920 / aspectRatio;
+        } else {
+            canvas.height = 1920;
+            canvas.width = 1920 * aspectRatio;
+        }
+    }
+
+    // ダウンロード機能
+    downloadBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'edited-image.png';
+        link.click();
+    });
+
+</script>
