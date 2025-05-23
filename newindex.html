@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像編集ツール</title>
+    <title>画像編集ツール│KBS情報通信ネットワーク</title>
     <style>
         * {
             margin: 0;
@@ -79,6 +79,28 @@
         .file-label:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .drop-zone {
+            border: 2px dashed #4CAF50;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .drop-zone.dragover {
+            border-color: #45a049;
+            background: rgba(76, 175, 80, 0.2);
+            transform: scale(1.02);
+        }
+
+        .drop-zone p {
+            margin: 0;
+            color: #4CAF50;
+            font-weight: bold;
         }
 
         select, input, button {
@@ -186,6 +208,16 @@
             color: #666;
         }
 
+        .placeholder {
+            background: rgba(240, 240, 240, 0.8);
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            color: #999;
+            font-size: 1.1rem;
+        }
+
         @media (max-width: 768px) {
             .controls {
                 grid-template-columns: 1fr;
@@ -240,13 +272,19 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📸 高機能画像編集ツール</h1>
-            <p style="text-align: center; color: #666;">プロフェッショナルな画像編集をブラウザで</p>
+            <h1>SNS用画像編集ツール</h1>
+            <h2 style="text-align: center; color: #2b2b2b; margin: 10px 0  5px 0; ">ほら、かんたん。</h2>
+            <p style="text-align: center; color: #666;">プロフェッショナルな画像編集をブラウザで。</p>
+            <p style="text-align: center; color: #666;">Created by 2025年度KBS旭工放送局</p>
         </div>
 
         <div class="controls">
             <div class="control-group">
                 <h3>📁 ファイル操作</h3>
+                <div class="drop-zone" id="dropZone">
+                    <p>📁 ここに画像をドラッグ＆ドロップ</p>
+                    <p style="font-size: 0.9rem; color: #666;">または下のボタンをクリック</p>
+                </div>
                 <label for="imageInput" class="file-label">画像を選択</label>
                 <input type="file" id="imageInput" class="file-input" accept="image/*">
                 <button onclick="downloadImage()">💾 画像を保存</button>
@@ -295,8 +333,9 @@
                     <input type="color" id="textColor" value="#000000">
                     <input type="color" id="textStroke" value="#ffffff">
                     <select id="fontFamily">
-                        <option value="Noto Sans JP">Noto Sans JP</option>
-                        <option value="Hiragino Kaku Gothic ProN">ヒラギノ角ゴ</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="sans-serif">Sans-serif</option>
                     </select>
                     <input type="range" id="shadowBlur" class="range-input" min="0" max="20" value="0">
                 </div>
@@ -310,15 +349,18 @@
                     <label><input type="radio" name="copyright" value="type2"> タイプ2</label>
                 </div>
                 <button onclick="toggleCopyright()">著作権表記切替</button>
-                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
-                    画像パス: /img/copyright1.png, /img/copyright2.png
-                </div>
             </div>
         </div>
 
         <div class="canvas-container">
-            <canvas id="canvas"></canvas>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <div id="placeholder" class="placeholder">
+                📷 画像を選択して編集を開始してください
+            </div>
         </div>
+            <footer style="text-align: left; padding: 20px; background: rgba(255, 255, 255, 0.95); border-radius: 20px; margin-top: 50px;">
+        <p>&copyKBS Kyokko Broadcastin Station</p>
+    </footer>
     </div>
 
     <script>
@@ -333,7 +375,7 @@
         let copyrightEnabled = true;
         let copyrightType = 'type1';
 
-        // 著作権表記画像のパス
+                // 著作権表記画像のパス
         const copyrightImagePaths = {
             type1: '/img/copyright1.png',
             type2: '/img/copyright2.png'
@@ -357,12 +399,39 @@
 
             setupEventListeners();
             updateBlurValue();
-            loadCopyrightImages();
         };
 
         function setupEventListeners() {
             // ファイル選択
             document.getElementById('imageInput').addEventListener('change', loadImage);
+
+            // ドラッグアンドドロップ
+            const dropZone = document.getElementById('dropZone');
+            
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type.startsWith('image/')) {
+                    handleImageFile(files[0]);
+                }
+            });
+
+            // ドロップゾーンクリックでファイル選択
+            dropZone.addEventListener('click', function() {
+                document.getElementById('imageInput').click();
+            });
 
             // キャンバスイベント
             canvas.addEventListener('mousedown', startDrawing);
@@ -387,6 +456,51 @@
             });
         }
 
+        function loadImage(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+
+        function handleImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('画像ファイルを選択してください。');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    originalImage = img;
+                    currentImage = img;
+                    
+                    // キャンバスサイズを画像に合わせる
+                    const maxWidth = 800;
+                    const maxHeight = 600;
+                    let { width, height } = img;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // プレースホルダーを非表示にし、キャンバスを表示
+                    document.getElementById('placeholder').style.display = 'none';
+                    canvas.style.display = 'block';
+                    
+                    drawImageWithCopyright();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         function loadCopyrightImages() {
             // 著作権画像を事前読み込み
             Object.keys(copyrightImagePaths).forEach(type => {
@@ -400,7 +514,7 @@
                 };
                 img.src = copyrightImagePaths[type];
             });
-        }
+        
             const file = e.target.files[0];
             if (!file) return;
 
@@ -430,6 +544,7 @@
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
+        }   
         
 
         function drawImageWithCopyright() {
@@ -534,7 +649,7 @@
         }
 
         function applyCrop() {
-            if (!cropMode || !currentImage) return;
+            if (!cropMode || !currentImage || !isDrawing) return;
 
             const scaleX = currentImage.width / canvas.width;
             const scaleY = currentImage.height / canvas.height;
@@ -543,6 +658,8 @@
             const cropY = Math.min(startY, endY) * scaleY;
             const cropWidth = Math.abs(endX - startX) * scaleX;
             const cropHeight = Math.abs(endY - startY) * scaleY;
+
+            if (cropWidth <= 0 || cropHeight <= 0) return;
 
             const tempCanvas = document.createElement('canvas');
             const tempCtx = tempCanvas.getContext('2d');
@@ -710,7 +827,7 @@
         }
 
         function downloadImage() {
-            if (!canvas) return;
+            if (!canvas || !currentImage) return;
 
             const link = document.createElement('a');
             link.download = 'edited_image.png';
