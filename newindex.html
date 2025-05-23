@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像編集ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-group h3 {
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: block;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .canvas-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        #canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            max-width: 100%;
+            height: auto;
+            cursor: crosshair;
+        }
+
+        .blur-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .blur-intensity {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .text-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .text-controls input[type="color"] {
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .copyright-select {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .copyright-select input[type="radio"] {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        .drawing-selection {
+            position: absolute;
+            border: 2px dashed #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            pointer-events: none;
+            border-radius: 5px;
+        }
+
+        .mobile-save-info {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .text-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .blur-controls {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+
+        .range-input {
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            margin: 10px 0;
+        }
+
+        .range-input::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .range-input::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 高機能画像編集ツール</h1>
+            <p style="text-align: center; color: #666;">プロフェッショナルな画像編集をブラウザで</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <h3>📁 ファイル操作</h3>
+                <label for="imageInput" class="file-label">画像を選択</label>
+                <input type="file" id="imageInput" class="file-input" accept="image/*">
+                <button onclick="downloadImage()">💾 画像を保存</button>
+                <div class="mobile-save-info" id="mobileInfo" style="display: none;">
+                    📱 スマートフォンでは画像を長押しして「写真に保存」を選択してください
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>📐 解像度変更</h3>
+                <select id="resolutionSelect">
+                    <option value="100">100% (オリジナル)</option>
+                    <option value="75">75%</option>
+                    <option value="50">50%</option>
+                    <option value="25">25%</option>
+                </select>
+                <button onclick="changeResolution()">解像度変更</button>
+            </div>
+
+            <div class="control-group">
+                <h3>✂️ クロップ</h3>
+                <button onclick="toggleCropMode()">クロップモード</button>
+                <button onclick="applyCrop()">クロップ実行</button>
+                <button onclick="resetCrop()">リセット</button>
+            </div>
+
+            <div class="control-group">
+                <h3>🌫️ ぼかし</h3>
+                <div class="blur-controls">
+                    <select id="blurType">
+                        <option value="full">全面ぼかし</option>
+                        <option value="selection">範囲選択ぼかし</option>
+                    </select>
+                    <input type="range" id="blurIntensity" class="range-input" min="1" max="10" value="1">
+                    <span id="blurValue">1</span>
+                </div>
+                <button onclick="applyBlur()">ぼかし適用</button>
+                <button onclick="clearBlurSelection()">選択解除</button>
+            </div>
+
+            <div class="control-group">
+                <h3>📝 テキスト</h3>
+                <div class="text-controls">
+                    <input type="text" id="textInput" placeholder="テキストを入力">
+                    <input type="number" id="fontSize" placeholder="フォントサイズ" value="24">
+                    <input type="color" id="textColor" value="#000000">
+                    <input type="color" id="textStroke" value="#ffffff">
+                    <select id="fontFamily">
+                        <option value="Noto Sans JP">Noto Sans JP</option>
+                        <option value="Hiragino Kaku Gothic ProN">ヒラギノ角ゴ</option>
+                    </select>
+                    <input type="range" id="shadowBlur" class="range-input" min="0" max="20" value="0">
+                </div>
+                <button onclick="addText()">テキスト追加</button>
+            </div>
+
+            <div class="control-group">
+                <h3>©️ 著作権表記</h3>
+                <div class="copyright-select">
+                    <label><input type="radio" name="copyright" value="type1" checked> タイプ1</label>
+                    <label><input type="radio" name="copyright" value="type2"> タイプ2</label>
+                </div>
+                <button onclick="toggleCopyright()">著作権表記切替</button>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                    画像パス: /img/copyright1.png, /img/copyright2.png
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let canvas, ctx;
+        let originalImage = null;
+        let currentImage = null;
+        let isDrawing = false;
+        let startX, startY, endX, endY;
+        let cropMode = false;
+        let blurSelections = [];
+        let copyrightEnabled = true;
+        let copyrightType = 'type1';
+
+        // 著作権表記画像のパス
+        const copyrightImagePaths = {
+            type1: '/img/copyright1.png',
+            type2: '/img/copyright2.png'
+        };
+
+        // 著作権表記画像を格納
+        let copyrightImages = {
+            type1: null,
+            type2: null
+        };
+
+        // 初期化
+        window.onload = function() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            // モバイル判定
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                document.getElementById('mobileInfo').style.display = 'block';
+            }
+
+            setupEventListeners();
+            updateBlurValue();
+            loadCopyrightImages();
+        };
+
+        function setupEventListeners() {
+            // ファイル選択
+            document.getElementById('imageInput').addEventListener('change', loadImage);
+
+            // キャンバスイベント
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('click', addTextAtPosition);
+
+            // タッチイベント（スマートフォン対応）
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', handleTouch);
+
+            // ぼかし強度表示更新
+            document.getElementById('blurIntensity').addEventListener('input', updateBlurValue);
+
+            // 著作権選択
+            document.querySelectorAll('input[name="copyright"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    copyrightType = this.value;
+                    drawImageWithCopyright();
+                });
+            });
+        }
+
+        function loadCopyrightImages() {
+            // 著作権画像を事前読み込み
+            Object.keys(copyrightImagePaths).forEach(type => {
+                const img = new Image();
+                img.onload = function() {
+                    copyrightImages[type] = img;
+                    console.log(`著作権画像 ${type} が読み込まれました`);
+                };
+                img.onerror = function() {
+                    console.warn(`著作権画像 ${type} の読み込みに失敗しました: ${copyrightImagePaths[type]}`);
+                };
+                img.src = copyrightImagePaths[type];
+            });
+        }
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    originalImage = img;
+                    currentImage = img;
+                    
+                    // キャンバスサイズを画像に合わせる
+                    const maxWidth = 800;
+                    const maxHeight = 600;
+                    let { width, height } = img;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    drawImageWithCopyright();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        
+
+        function drawImageWithCopyright() {
+            if (!currentImage) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+            if (copyrightEnabled && copyrightImages[copyrightType]) {
+                const copyrightImg = copyrightImages[copyrightType];
+                const copyrightWidth = Math.min(canvas.width * 0.3, 200);
+                const copyrightHeight = (copyrightImg.height / copyrightImg.width) * copyrightWidth;
+                const x = canvas.width - copyrightWidth - 10;
+                const y = canvas.height - copyrightHeight - 10;
+                
+                ctx.globalAlpha = 0.7;
+                ctx.drawImage(copyrightImg, x, y, copyrightWidth, copyrightHeight);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function changeResolution() {
+            if (!originalImage) return;
+
+            const scale = parseInt(document.getElementById('resolutionSelect').value) / 100;
+            const newWidth = originalImage.width * scale;
+            const newHeight = originalImage.height * scale;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = newWidth;
+            tempCanvas.height = newHeight;
+
+            tempCtx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                canvas.width = Math.min(newWidth, 800);
+                canvas.height = Math.min(newHeight, 600);
+                drawImageWithCopyright();
+            };
+            img.src = tempCanvas.toDataURL();
+        }
+
+        function toggleCropMode() {
+            cropMode = !cropMode;
+            canvas.style.cursor = cropMode ? 'crosshair' : 'default';
+            document.querySelector('button[onclick="toggleCropMode()"]').textContent = 
+                cropMode ? 'クロップ解除' : 'クロップモード';
+        }
+
+        function startDrawing(e) {
+            if (!cropMode && document.getElementById('blurType').value !== 'selection') return;
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            endX = e.clientX - rect.left;
+            endY = e.clientY - rect.top;
+
+            // 選択範囲の描画
+            drawImageWithCopyright();
+            
+            ctx.strokeStyle = cropMode ? '#ff6b6b' : '#4CAF50';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            ctx.setLineDash([]);
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            if (document.getElementById('blurType').value === 'selection') {
+                blurSelections.push({
+                    x: Math.min(startX, endX),
+                    y: Math.min(startY, endY),
+                    width: Math.abs(endX - startX),
+                    height: Math.abs(endY - startY)
+                });
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0] || e.changedTouches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                           e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function applyCrop() {
+            if (!cropMode || !currentImage) return;
+
+            const scaleX = currentImage.width / canvas.width;
+            const scaleY = currentImage.height / canvas.height;
+
+            const cropX = Math.min(startX, endX) * scaleX;
+            const cropY = Math.min(startY, endY) * scaleY;
+            const cropWidth = Math.abs(endX - startX) * scaleX;
+            const cropHeight = Math.abs(endY - startY) * scaleY;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = cropWidth;
+            tempCanvas.height = cropHeight;
+
+            tempCtx.drawImage(currentImage, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                canvas.width = Math.min(cropWidth, 800);
+                canvas.height = Math.min(cropHeight, 600);
+                drawImageWithCopyright();
+                toggleCropMode();
+            };
+            img.src = tempCanvas.toDataURL();
+        }
+
+        function resetCrop() {
+            if (originalImage) {
+                currentImage = originalImage;
+                canvas.width = Math.min(originalImage.width, 800);
+                canvas.height = Math.min(originalImage.height, 600);
+                drawImageWithCopyright();
+            }
+            if (cropMode) toggleCropMode();
+        }
+
+        function applyBlur() {
+            if (!currentImage) return;
+
+            const blurType = document.getElementById('blurType').value;
+            const intensity = document.getElementById('blurIntensity').value;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+
+            tempCtx.drawImage(canvas, 0, 0);
+
+            if (blurType === 'full') {
+                tempCtx.filter = `blur(${intensity}px)`;
+                tempCtx.drawImage(canvas, 0, 0);
+            } else {
+                // 範囲選択ぼかし
+                blurSelections.forEach(selection => {
+                    const imageData = tempCtx.getImageData(selection.x, selection.y, selection.width, selection.height);
+                    
+                    // 簡易ぼかし処理
+                    for (let i = 0; i < intensity; i++) {
+                        applySimpleBlur(imageData, selection.width, selection.height);
+                    }
+                    
+                    tempCtx.putImageData(imageData, selection.x, selection.y);
+                });
+            }
+
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                drawImageWithCopyright();
+            };
+            img.src = tempCanvas.toDataURL();
+        }
+
+        function applySimpleBlur(imageData, width, height) {
+            const data = imageData.data;
+            const tempData = new Uint8ClampedArray(data);
+
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    for (let c = 0; c < 3; c++) {
+                        let sum = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const neighborIdx = ((y + dy) * width + (x + dx)) * 4 + c;
+                                sum += tempData[neighborIdx];
+                            }
+                        }
+                        data[idx + c] = sum / 9;
+                    }
+                }
+            }
+        }
+
+        function clearBlurSelection() {
+            blurSelections = [];
+            drawImageWithCopyright();
+        }
+
+        function updateBlurValue() {
+            const value = document.getElementById('blurIntensity').value;
+            document.getElementById('blurValue').textContent = value;
+        }
+
+        function addTextAtPosition(e) {
+            const textInput = document.getElementById('textInput');
+            if (!textInput.value.trim()) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            addTextToCanvas(x, y);
+        }
+
+        function addText() {
+            const textInput = document.getElementById('textInput');
+            if (!textInput.value.trim()) return;
+
+            addTextToCanvas(canvas.width / 2, canvas.height / 2);
+        }
+
+        function addTextToCanvas(x, y) {
+            const text = document.getElementById('textInput').value;
+            const fontSize = document.getElementById('fontSize').value;
+            const textColor = document.getElementById('textColor').value;
+            const strokeColor = document.getElementById('textStroke').value;
+            const fontFamily = document.getElementById('fontFamily').value;
+            const shadowBlur = document.getElementById('shadowBlur').value;
+
+            ctx.font = `${fontSize}px ${fontFamily}`;
+            ctx.textAlign = 'center';
+            
+            // 影
+            if (shadowBlur > 0) {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = shadowBlur;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+            }
+
+            // 縁取り
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.strokeText(text, x, y);
+
+            // テキスト本体
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, x, y);
+
+            // 影をリセット
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // 現在の画像を更新
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+            };
+            img.src = canvas.toDataURL();
+        }
+
+        function toggleCopyright() {
+            copyrightEnabled = !copyrightEnabled;
+            drawImageWithCopyright();
+            document.querySelector('button[onclick="toggleCopyright()"]').textContent = 
+                copyrightEnabled ? '著作権表記OFF' : '著作権表記ON';
+        }
+
+        function downloadImage() {
+            if (!canvas) return;
+
+            const link = document.createElement('a');
+            link.download = 'edited_image.png';
+            link.href = canvas.toDataURL();
+
+            // モバイル対応
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                // モバイルでは新しいタブで画像を開く
+                const newWindow = window.open();
+                newWindow.document.write(`<img src="${canvas.toDataURL()}" style="width:100%;height:auto;">`);
+                newWindow.document.title = 'edited_image.png';
+            } else {
+                link.click();
+            }
+        }
+    </script>
+</body>
+</html>
