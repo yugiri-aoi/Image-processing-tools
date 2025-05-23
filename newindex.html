@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -267,6 +268,12 @@
             cursor: pointer;
             border: none;
         }
+
+        .copyright-status {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -349,6 +356,9 @@
                     <label><input type="radio" name="copyright" value="type2"> タイプ2</label>
                 </div>
                 <button onclick="toggleCopyright()">著作権表記切替</button>
+                <div class="copyright-status" id="copyrightStatus">
+                    状態: ON (タイプ1)
+                </div>
             </div>
         </div>
 
@@ -358,9 +368,9 @@
                 📷 画像を選択して編集を開始してください
             </div>
         </div>
-            <footer style="text-align: left; padding: 20px; background: rgba(255, 255, 255, 0.95); border-radius: 20px; margin-top: 50px;">
-        <p>&copyKBS Kyokko Broadcastin Station</p>
-    </footer>
+        <footer style="text-align: left; padding: 20px; background: rgba(255, 255, 255, 0.95); border-radius: 20px; margin-top: 50px;">
+            <p>&copy;KBS Kyokko Broadcasting Station</p>
+        </footer>
     </div>
 
     <script>
@@ -375,17 +385,16 @@
         let copyrightEnabled = true;
         let copyrightType = 'type1';
 
-                // 著作権表記画像のパス
-        const copyrightImagePaths = {
-            type1: '/img/copyright1.png',
-            type2: '/img/copyright2.png'
-        };
+let copyrightImages = {
+    type1: null,
+    type2: null
+};
 
-        // 著作権表記画像を格納
-        let copyrightImages = {
-            type1: null,
-            type2: null
-        };
+function loadCopyrightImages() {
+    loadCopyrightImage('type1', '/img/copyright.PNG');
+    loadCopyrightImage('type2', '/img/copyright2.PNG');
+}
+
 
         // 初期化
         window.onload = function() {
@@ -399,6 +408,7 @@
 
             setupEventListeners();
             updateBlurValue();
+            loadCopyrightImages();
         };
 
         function setupEventListeners() {
@@ -451,6 +461,7 @@
             document.querySelectorAll('input[name="copyright"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     copyrightType = this.value;
+                    updateCopyrightStatus();
                     drawImageWithCopyright();
                 });
             });
@@ -501,69 +512,55 @@
             reader.readAsDataURL(file);
         }
 
-        function loadCopyrightImages() {
-            // 著作権画像を事前読み込み
-            Object.keys(copyrightImagePaths).forEach(type => {
-                const img = new Image();
-                img.onload = function() {
-                    copyrightImages[type] = img;
-                    console.log(`著作権画像 ${type} が読み込まれました`);
-                };
-                img.onerror = function() {
-                    console.warn(`著作権画像 ${type} の読み込みに失敗しました: ${copyrightImagePaths[type]}`);
-                };
-                img.src = copyrightImagePaths[type];
-            });
-        
-            const file = e.target.files[0];
-            if (!file) return;
+   function loadCopyrightImage(type, src) {
+    const img = new Image();
+    img.onload = function () {
+        copyrightImages[type] = img;
+        console.log(`著作権画像 ${type} が読み込まれました`);
+        // 既に画像が読み込まれている場合は再描画
+        if (currentImage) {
+            drawImageWithCopyright();
+        }
+    };
+    img.src = src;
+}
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    originalImage = img;
-                    currentImage = img;
-                    
-                    // キャンバスサイズを画像に合わせる
-                    const maxWidth = 800;
-                    const maxHeight = 600;
-                    let { width, height } = img;
+function drawImageWithCopyright() {
+    if (!currentImage) return;
 
-                    if (width > maxWidth || height > maxHeight) {
-                        const ratio = Math.min(maxWidth / width, maxHeight / height);
-                        width *= ratio;
-                        height *= ratio;
-                    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    drawImageWithCopyright();
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }   
-        
+    if (copyrightEnabled && copyrightImages[copyrightType]) {
+        const copyrightImg = copyrightImages[copyrightType];
 
-        function drawImageWithCopyright() {
-            if (!currentImage) return;
+        // キャンバスサイズに収まるようにアスペクト比を保って拡大
+        const maxWidth = canvas.width;
+        const maxHeight = canvas.height;
+        const imgRatio = copyrightImg.width / copyrightImg.height;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+        let targetWidth = maxWidth;
+        let targetHeight = targetWidth / imgRatio;
 
-            if (copyrightEnabled && copyrightImages[copyrightType]) {
-                const copyrightImg = copyrightImages[copyrightType];
-                const copyrightWidth = Math.min(canvas.width * 0.3, 200);
-                const copyrightHeight = (copyrightImg.height / copyrightImg.width) * copyrightWidth;
-                const x = canvas.width - copyrightWidth - 10;
-                const y = canvas.height - copyrightHeight - 10;
-                
-                ctx.globalAlpha = 0.7;
-                ctx.drawImage(copyrightImg, x, y, copyrightWidth, copyrightHeight);
-                ctx.globalAlpha = 1.0;
-            }
+        if (targetHeight > maxHeight) {
+            targetHeight = maxHeight;
+            targetWidth = targetHeight * imgRatio;
+        }
+
+        const x = canvas.width - targetWidth - 10;
+        const y = canvas.height - targetHeight - 10;
+
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(copyrightImg, x, y, targetWidth, targetHeight);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+
+        function updateCopyrightStatus() {
+            const status = document.getElementById('copyrightStatus');
+            const typeText = copyrightType === 'type1' ? 'タイプ1' : 'タイプ2';
+            status.textContent = `状態: ${copyrightEnabled ? 'ON' : 'OFF'} (${typeText})`;
         }
 
         function changeResolution() {
@@ -826,23 +823,44 @@
                 copyrightEnabled ? '著作権表記OFF' : '著作権表記ON';
         }
 
-        function downloadImage() {
-            if (!canvas || !currentImage) return;
+function downloadImage() {
+    if (!canvas || !currentImage) return;
 
-            const link = document.createElement('a');
-            link.download = 'edited_image.png';
-            link.href = canvas.toDataURL();
+    const defaultName = 'edited_image';
+    let fileName = prompt('保存するファイル名を入力してください（拡張子 .png は不要）:', defaultName);
 
-            // モバイル対応
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                // モバイルでは新しいタブで画像を開く
-                const newWindow = window.open();
-                newWindow.document.write(`<img src="${canvas.toDataURL()}" style="width:100%;height:auto;">`);
-                newWindow.document.title = 'edited_image.png';
-            } else {
-                link.click();
-            }
-        }
+    // ✅ キャンセルされた場合は終了
+    if (fileName === null) {
+        console.log('ダウンロードがキャンセルされました。');
+        return;
+    }
+
+    // 空白文字のみの場合はキャンセル扱いにする（任意）
+    fileName = fileName.trim();
+    if (fileName === '') {
+        console.log('無効なファイル名のため、ダウンロードは中止されました。');
+        return;
+    }
+
+    // ファイル名に使えない文字を除去
+    fileName = fileName.replace(/[\\\/:*?"<>|]/g, '');
+    const finalFileName = `${fileName}.png`;
+
+    const link = document.createElement('a');
+    link.download = finalFileName;
+    link.href = canvas.toDataURL();
+
+    // モバイル対応
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        const newWindow = window.open();
+        newWindow.document.write(`<img src="${canvas.toDataURL()}" style="width:100%;height:auto;">`);
+        newWindow.document.title = finalFileName;
+    } else {
+        link.click();
+    }
+}
+
+
     </script>
 </body>
 </html>
